@@ -7,13 +7,15 @@
     };
   };
 
-  outputs = { self, apple-silicon, ... }:
+  outputs =
+    { apple-silicon, ... }:
     let
       p = apple-silicon.packages.aarch64-linux;
-    in {
+    in
+    {
       hydraJobs = {
-        linux-asahi.aarch64-linux         = p.linux-asahi;
-        uboot-asahi.aarch64-linux         = p.uboot-asahi;
-       };
+        linux-asahi.aarch64-linux = p.linux-asahi;
+        uboot-asahi.aarch64-linux = p.uboot-asahi;
+      };
     };
 }

@@ -1,0 +1,45 @@
+name: Update flake-lock
+
+on:
+  schedule:
+    - cron: "23 4 * * 1" # Mondays 04:23 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: DeterminateSystems/nix-installer-action@main
+
+      - name: Update lock file
+        run: nix flake update
+
+      # Evaluate only (no build) so a broken bump never reaches main
+      - name: Check that the jobs still evaluate
+        run: |
+          nix eval --raw .#hydraJobs.linux-asahi.aarch64-linux.drvPath
+          nix eval --raw .#hydraJobs.uboot-asahi.aarch64-linux.drvPath
+
+      - name: Record pinned revisions
+        run: |
+          nix flake metadata --json > meta.json
+          jq -r '.locks.nodes.nixpkgs.locked.rev' meta.json > NIXPKGS_REV
+          jq -r '.locks.nodes."apple-silicon".locked.rev' meta.json > APPLE_SILICON_REV
+          rm meta.json
+
+      - name: Commit and push if anything changed
+        run: |
+          git add flake.lock NIXPKGS_REV APPLE_SILICON_REV
+          if git diff --cached --quiet; then
+            echo "No changes."
+            exit 0
+          fi
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git commit -m "flake.lock: autmatic update"
+          git push
